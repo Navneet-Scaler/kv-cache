@@ -1,0 +1,34 @@
+# =============================================================================
+# KV-Cache Dependencies
+# =============================================================================
+# Python 3.10+ required
+#
+# Core implementation uses only standard library:
+#   - asyncio (async networking)
+#   - collections (OrderedDict for LRU)
+#   - dataclasses (command/response objects)
+#   - time (TTL management)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Testing Framework
+# -----------------------------------------------------------------------------
+pytest                # Test runner
+pytest-asyncio        # Async test support
+pytest-cov            # Coverage reporting
+pytest-timeout        # Test timeouts (prevents hanging tests)
+
+# -----------------------------------------------------------------------------
+# Development Tools (optional but recommended)
+# -----------------------------------------------------------------------------
+black                # Code formatting
+isort                # Import sorting
+mypy                 # Static type checking
+flake8               # Linting
+
+# -----------------------------------------------------------------------------
+# Performance (optional)
+# -----------------------------------------------------------------------------
+# uvloop provides faster asyncio event loop on Unix systems
+# Not required but can improve performance by 2-4x
+uvloop; platform_system != "Windows"

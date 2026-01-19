@@ -1,0 +1,70 @@
+#!/bin/bash
+# =============================================================================
+# KV-Cache AWS Configuration
+# =============================================================================
+# Copy this file to config.sh and update with your settings:
+#   cp config.sh.example config.sh
+#   nano config.sh
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# REQUIRED: Your Docker Hub Image
+# -----------------------------------------------------------------------------
+# Replace with your Docker Hub username and image name
+# Example: "johndoe/kv-cache:latest"
+DOCKER_IMAGE="YOUR_DOCKERHUB_USERNAME/kv-cache:latest"
+
+# -----------------------------------------------------------------------------
+# AWS Configuration (Optional - defaults provided)
+# -----------------------------------------------------------------------------
+
+# AWS Region
+# Choose a region close to you for lower latency
+# Common options: us-east-1, us-west-2, eu-west-1, ap-southeast-1
+AWS_REGION="ap-south-1"
+
+# EC2 Instance Type
+# t3.small: 2 vCPU, 2 GB RAM (~$0.0208/hour)
+# t3.micro: 1 vCPU, 1 GB RAM (~$0.0104/hour) - Free tier eligible
+INSTANCE_TYPE="t3.small"
+
+# Key Pair Name (for SSH access)
+# A new key pair will be created with this name
+KEY_NAME="kv-cache-key"
+
+# Security Group Name
+# A new security group will be created with this name
+SECURITY_GROUP="kv-cache-sg"
+
+# -----------------------------------------------------------------------------
+# Load Test Configuration (Optional - defaults provided)
+# -----------------------------------------------------------------------------
+
+# Number of concurrent connections
+LOAD_TEST_CONNECTIONS=100
+
+# Number of requests per connection
+LOAD_TEST_REQUESTS=1000
+
+# PUT to GET ratio (0.5 = 50% PUT, 50% GET)
+LOAD_TEST_RATIO=0.5
+
+# TTL for PUT operations (0 = no TTL)
+LOAD_TEST_TTL=0
+
+# -----------------------------------------------------------------------------
+# Advanced Configuration (Usually don't need to change)
+# -----------------------------------------------------------------------------
+
+# AMI ID (Amazon Linux 2023)
+# Leave empty to auto-detect latest Amazon Linux 2023 AMI
+AMI_ID=""
+
+# Instance tags
+PROJECT_TAG="kv-cache"
+
+# SSH connection timeout (seconds)
+SSH_TIMEOUT=30
+
+# Max wait time for instance startup (seconds)
+INSTANCE_WAIT_TIMEOUT=300
