@@ -118,9 +118,5 @@ docker/secrets/
 scripts/config.sh
 scripts/.instances
 
-# Results - keep directory but ignore contents
-results/*
-!results/.gitkeep
-
 # This is for me - you don't get access to it ;)
 INSTRUCTOR.md
