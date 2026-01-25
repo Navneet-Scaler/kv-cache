@@ -49,9 +49,10 @@ class LRUEvictionPolicy:
         Raises:
             ValueError: If max_size is not positive
         """
-        # === TODO START: Initialize LRU cache ===
-        raise NotImplementedError("TODO: Implement this method")
-        # === TODO END ===
+        if max_size <= 0:
+            raise ValueError("max_size must be positive")
+        self.max_size = max_size
+        self._cache: "OrderedDict[str, Any]" = OrderedDict()
 
     def get(self, key: str) -> Optional[Any]:
         """
@@ -69,9 +70,11 @@ class LRUEvictionPolicy:
         - Return None if key doesn't exist
         - If key exists, move to end (most recently used) and return value
         """
-        # === TODO START: Implement LRU get ===
-        raise NotImplementedError("TODO: Implement this method")
-        # === TODO END ===
+        if key not in self._cache:
+            return None
+
+        self._cache.move_to_end(key)
+        return self._cache[key]
 
     def put(self, key: str, value: Any) -> Optional[str]:
         """
@@ -91,9 +94,18 @@ class LRUEvictionPolicy:
         - If key is new and cache is full, evict LRU (first item)
         - Add new item at end (most recently used)
         """
-        # === TODO START: Implement LRU put ===
-        raise NotImplementedError("TODO: Implement this method")
-        # === TODO END ===
+        evicted_key = None
+
+        if key in self._cache:
+            self._cache[key] = value
+            self._cache.move_to_end(key)
+            return None
+
+        if len(self._cache) >= self.max_size:
+            evicted_key, _ = self._cache.popitem(last=False)
+
+        self._cache[key] = value
+        return evicted_key
 
     def delete(self, key: str) -> bool:
         """
@@ -107,9 +119,10 @@ class LRUEvictionPolicy:
 
         Time Complexity: O(1)
         """
-        # === TODO START: Implement delete ===
-        raise NotImplementedError("TODO: Implement this method")
-        # === TODO END ===
+        if key in self._cache:
+            self._cache.pop(key, None)
+            return True
+        return False
 
     def contains(self, key: str) -> bool:
         """
@@ -125,9 +138,7 @@ class LRUEvictionPolicy:
 
         Note: This does NOT update the LRU order, unlike get().
         """
-        # === TODO START: Implement contains ===
-        raise NotImplementedError("TODO: Implement this method")
-        # === TODO END ===
+        return key in self._cache
 
     def peek(self, key: str) -> Optional[Any]:
         """
@@ -143,9 +154,7 @@ class LRUEvictionPolicy:
 
         Note: Unlike get(), this does NOT move the key to MRU position.
         """
-        # === TODO START: Implement peek ===
-        raise NotImplementedError("TODO: Implement this method")
-        # === TODO END ===
+        return self._cache.get(key)
 
     def evict_lru(self) -> Optional[Tuple[str, Any]]:
         """
@@ -156,9 +165,9 @@ class LRUEvictionPolicy:
 
         Time Complexity: O(1)
         """
-        # === TODO START: Implement evict_lru ===
-        raise NotImplementedError("TODO: Implement this method")
-        # === TODO END ===
+        if not self._cache:
+            return None
+        return self._cache.popitem(last=False)
 
     def get_lru_key(self) -> Optional[str]:
         """
@@ -169,9 +178,9 @@ class LRUEvictionPolicy:
 
         Time Complexity: O(1)
         """
-        # === TODO START: Implement get_lru_key ===
-        raise NotImplementedError("TODO: Implement this method")
-        # === TODO END ===
+        if not self._cache:
+            return None
+        return next(iter(self._cache))
 
     def get_mru_key(self) -> Optional[str]:
         """
@@ -182,9 +191,9 @@ class LRUEvictionPolicy:
 
         Time Complexity: O(1)
         """
-        # === TODO START: Implement get_mru_key ===
-        raise NotImplementedError("TODO: Implement this method")
-        # === TODO END ===
+        if not self._cache:
+            return None
+        return next(reversed(self._cache))
 
     def size(self) -> int:
         """Get current number of items in cache."""
@@ -196,9 +205,7 @@ class LRUEvictionPolicy:
 
     def clear(self) -> None:
         """Remove all items from cache."""
-        # === TODO START: Implement clear ===
-        raise NotImplementedError("TODO: Implement this method")
-        # === TODO END ===
+        self._cache.clear()
 
     def get_all_keys(self) -> List[str]:
         """

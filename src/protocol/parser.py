@@ -68,9 +68,28 @@ class ProtocolParser:
             - Validate key/value length constraints
             - Handle errors gracefully (return UNKNOWN command)
         """
-        # === TODO START: Implement parse_request ===
-        raise NotImplementedError("TODO: Implement this method")
-        # === TODO END ===
+        raw = data.strip()
+        if not raw:
+            return Command(type=CommandType.UNKNOWN, raw=raw)
+
+        parts = raw.split()
+        command_name = parts[0].upper()
+
+        if command_name == "PUT":
+            return self._parse_put(parts, raw)
+        if command_name == "GET":
+            return self._parse_get(parts, raw)
+        if command_name == "DELETE":
+            return self._parse_delete(parts, raw)
+        if command_name == "EXISTS":
+            return self._parse_exists(parts, raw)
+        if command_name == "QUIT":
+            # QUIT takes no args
+            if len(parts) == 1:
+                return Command(type=CommandType.QUIT, raw=raw)
+            return Command(type=CommandType.UNKNOWN, raw=raw)
+
+        return Command(type=CommandType.UNKNOWN, raw=raw)
 
     def _parse_put(self, parts: list, raw: str) -> Command:
         """
@@ -85,9 +104,29 @@ class ProtocolParser:
         Returns:
             Command object for PUT, or UNKNOWN if invalid
         """
-        # === TODO START: Implement _parse_put ===
-        raise NotImplementedError("TODO: Implement this method")
-        # === TODO END ===
+        if len(parts) < 3 or len(parts) > 4:
+            return Command(type=CommandType.UNKNOWN, raw=raw)
+
+        key, value = parts[1], parts[2]
+        if len(key) > self.max_key_length or len(value) > self.max_value_length:
+            return Command(type=CommandType.UNKNOWN, raw=raw)
+
+        ttl = 0
+        if len(parts) == 4:
+            try:
+                ttl = int(parts[3])
+                if ttl < 0:
+                    return Command(type=CommandType.UNKNOWN, raw=raw)
+            except ValueError:
+                return Command(type=CommandType.UNKNOWN, raw=raw)
+
+        return Command(
+            type=CommandType.PUT,
+            key=key,
+            value=value,
+            ttl=ttl,
+            raw=raw,
+        )
 
     def _parse_get(self, parts: list, raw: str) -> Command:
         """
@@ -95,9 +134,14 @@ class ProtocolParser:
 
         Format: GET <key>
         """
-        # === TODO START: Implement _parse_get ===
-        raise NotImplementedError("TODO: Implement this method")
-        # === TODO END ===
+        if len(parts) != 2:
+            return Command(type=CommandType.UNKNOWN, raw=raw)
+
+        key = parts[1]
+        if len(key) > self.max_key_length:
+            return Command(type=CommandType.UNKNOWN, raw=raw)
+
+        return Command(type=CommandType.GET, key=key, raw=raw)
 
     def _parse_delete(self, parts: list, raw: str) -> Command:
         """
@@ -105,9 +149,14 @@ class ProtocolParser:
 
         Format: DELETE <key>
         """
-        # === TODO START: Implement _parse_delete ===
-        raise NotImplementedError("TODO: Implement this method")
-        # === TODO END ===
+        if len(parts) != 2:
+            return Command(type=CommandType.UNKNOWN, raw=raw)
+
+        key = parts[1]
+        if len(key) > self.max_key_length:
+            return Command(type=CommandType.UNKNOWN, raw=raw)
+
+        return Command(type=CommandType.DELETE, key=key, raw=raw)
 
     def _parse_exists(self, parts: list, raw: str) -> Command:
         """
@@ -115,9 +164,14 @@ class ProtocolParser:
 
         Format: EXISTS <key>
         """
-        # === TODO START: Implement _parse_exists ===
-        raise NotImplementedError("TODO: Implement this method")
-        # === TODO END ===
+        if len(parts) != 2:
+            return Command(type=CommandType.UNKNOWN, raw=raw)
+
+        key = parts[1]
+        if len(key) > self.max_key_length:
+            return Command(type=CommandType.UNKNOWN, raw=raw)
+
+        return Command(type=CommandType.EXISTS, key=key, raw=raw)
 
     def format_response(self, response: Response) -> str:
         """
@@ -144,6 +198,15 @@ class ProtocolParser:
             - For other responses, include the message
             - Always end with newline character
         """
-        # === TODO START: Implement format_response ===
-        raise NotImplementedError("TODO: Implement this method")
-        # === TODO END ===
+        prefix = response.status.value
+
+        # If value is provided (GET), prefer it; otherwise use message
+        if response.value is not None:
+            body = response.value
+        else:
+            body = response.message
+
+        # Ensure empty body still results in newline-terminated string
+        if body:
+            return f"{prefix} {body}\n"
+        return f"{prefix}\n"
