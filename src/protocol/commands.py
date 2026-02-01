@@ -18,6 +18,9 @@ class CommandType(Enum):
     EXISTS = auto()
     QUIT = auto()
     UNKNOWN = auto()
+    # Replication commands (internal use only)
+    REPL_PUT = auto()
+    REPL_DELETE = auto()
 
 
 class ResponseStatus(Enum):
@@ -57,9 +60,9 @@ class Command:
             return False
         if self.type == CommandType.QUIT:
             return True
-        if self.type in (CommandType.GET, CommandType.DELETE, CommandType.EXISTS):
+        if self.type in (CommandType.GET, CommandType.DELETE, CommandType.EXISTS, CommandType.REPL_DELETE):
             return bool(self.key)
-        if self.type == CommandType.PUT:
+        if self.type in (CommandType.PUT, CommandType.REPL_PUT):
             return bool(self.key) and bool(self.value)
         return False
 

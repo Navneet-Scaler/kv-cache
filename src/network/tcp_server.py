@@ -20,6 +20,8 @@ from asyncio import StreamReader, StreamWriter
 from typing import Optional
 
 from ..cache.store import KVStore
+from ..cluster.config import ClusterConfig
+from ..cluster.router import ClusterRouter
 from ..config.settings import settings
 from ..protocol.commands import CommandType, Response
 from ..protocol.parser import ProtocolParser
@@ -62,6 +64,7 @@ class KVServer:
             host: str = None,
             port: int = None,
             store: KVStore = None,
+            cluster_config: ClusterConfig = None,
     ):
         """
         Initialize the server.
@@ -70,11 +73,16 @@ class KVServer:
             host: Bind address (default from settings)
             port: Port number (default from settings)
             store: KVStore instance (creates new one if not provided)
+            cluster_config: ClusterConfig instance for clustering support
         """
         self.host = host if host is not None else settings.HOST
         self.port = port if port is not None else settings.PORT
         self.store = store if store is not None else KVStore()
         self.parser = ProtocolParser()
+        
+        # Clustering support
+        self.cluster_config = cluster_config
+        self.router = ClusterRouter(cluster_config) if cluster_config else None
 
         # Server state
         self._server: Optional[asyncio.Server] = None
@@ -143,6 +151,26 @@ class KVServer:
                 else:
                     self._total_requests += 1
                     response = self._execute_command(command)
+                    
+                    # Handle forwarding if needed (clustered mode)
+                    if response.message == "FORWARD_TO_PRIMARY" and self.router:
+                        response = await self.router.forward_to_primary(command)
+                    
+                    # Handle replication for successful writes (primary only)
+                    elif self.cluster_config and self.cluster_config.is_primary_for_key(command.key):
+                        if command.type == CommandType.PUT and response.message == "stored":
+                            # Replicate and require success before returning OK
+                            repl_success = await self.router.replicate_put(command.key, command.value, command.ttl)
+                            if not repl_success:
+                                logger.warning(f"Replication failed for PUT {command.key}")
+                                response = Response.error("replication failed")
+
+                        elif command.type == CommandType.DELETE and response.message == "deleted":
+                            # Replicate delete and require success
+                            repl_success = await self.router.replicate_delete(command.key)
+                            if not repl_success:
+                                logger.warning(f"Replication failed for DELETE {command.key}")
+                                response = Response.error("replication failed")
 
                 writer.write(self.parser.format_response(response).encode())
                 await writer.drain()
@@ -164,6 +192,11 @@ class KVServer:
 
         This is a helper method that routes commands to the appropriate
         KVStore method and returns the formatted response.
+        
+        With clustering enabled:
+        - Client requests are forwarded to primary if needed
+        - Primary replicates writes to replica
+        - Replication commands are executed locally
 
         Args:
             command: The Command object to execute
@@ -171,6 +204,65 @@ class KVServer:
         Returns:
             Response object with the result
         """
+        # Handle replication commands (internal only - never forward)
+        if command.type == CommandType.REPL_PUT:
+            self.store.put(command.key, command.value, ttl=command.ttl)
+            return Response.stored()
+        
+        if command.type == CommandType.REPL_DELETE:
+            deleted = self.store.delete(command.key)
+            return Response.deleted() if deleted else Response.key_not_found()
+        
+        # If clustering is disabled, execute locally
+        if not self.cluster_config:
+            return self._execute_local(command)
+        
+        # Client commands - may need forwarding
+        if command.type in (CommandType.PUT, CommandType.DELETE):
+            # Check if this node is the primary
+            if not self.cluster_config.is_primary_for_key(command.key):
+                # Forward to primary
+                logger.debug(f"Forwarding {command.type.name} {command.key} to primary")
+                # Use asyncio to forward (we'll handle this in handle_client)
+                return Response.error("FORWARD_TO_PRIMARY")
+            
+            # This node is primary - execute and replicate
+            if command.type == CommandType.PUT:
+                # Store locally
+                self.store.put(command.key, command.value, ttl=command.ttl)
+                # Replicate to replica (will be done async in handle_client)
+                return Response.stored()
+            
+            if command.type == CommandType.DELETE:
+                # Delete locally
+                deleted = self.store.delete(command.key)
+                if deleted:
+                    # Replicate delete (will be done async in handle_client)
+                    return Response.deleted()
+                return Response.key_not_found()
+        
+        # GET and EXISTS can be handled locally or forwarded
+        if command.type == CommandType.GET:
+            if not self.cluster_config.is_primary_for_key(command.key):
+                # Forward to primary
+                logger.debug(f"Forwarding GET {command.key} to primary")
+                return Response.error("FORWARD_TO_PRIMARY")
+            
+            value = self.store.get(command.key)
+            return Response.value_response(value) if value is not None else Response.key_not_found()
+        
+        if command.type == CommandType.EXISTS:
+            if not self.cluster_config.is_primary_for_key(command.key):
+                logger.debug(f"Forwarding EXISTS {command.key} to primary")
+                return Response.error("FORWARD_TO_PRIMARY")
+            
+            exists = self.store.exists(command.key)
+            return Response.exists_response(exists)
+        
+        return Response.error("invalid command")
+    
+    def _execute_local(self, command) -> Response:
+        """Execute command locally (non-clustered mode)."""
         if command.type == CommandType.PUT:
             self.store.put(command.key, command.value, ttl=command.ttl)
             return Response.stored()

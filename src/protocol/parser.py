@@ -83,6 +83,10 @@ class ProtocolParser:
             return self._parse_delete(parts, raw)
         if command_name == "EXISTS":
             return self._parse_exists(parts, raw)
+        if command_name == "REPL_PUT":
+            return self._parse_repl_put(parts, raw)
+        if command_name == "REPL_DELETE":
+            return self._parse_repl_delete(parts, raw)
         if command_name == "QUIT":
             # QUIT takes no args
             if len(parts) == 1:
@@ -172,6 +176,51 @@ class ProtocolParser:
             return Command(type=CommandType.UNKNOWN, raw=raw)
 
         return Command(type=CommandType.EXISTS, key=key, raw=raw)
+
+    def _parse_repl_put(self, parts: list, raw: str) -> Command:
+        """
+        Parse a REPL_PUT command (internal replication).
+
+        Format: REPL_PUT <key> <value> [ttl]
+        """
+        if len(parts) < 3 or len(parts) > 4:
+            return Command(type=CommandType.UNKNOWN, raw=raw)
+
+        key, value = parts[1], parts[2]
+        if len(key) > self.max_key_length or len(value) > self.max_value_length:
+            return Command(type=CommandType.UNKNOWN, raw=raw)
+
+        ttl = 0
+        if len(parts) == 4:
+            try:
+                ttl = int(parts[3])
+                if ttl < 0:
+                    return Command(type=CommandType.UNKNOWN, raw=raw)
+            except ValueError:
+                return Command(type=CommandType.UNKNOWN, raw=raw)
+
+        return Command(
+            type=CommandType.REPL_PUT,
+            key=key,
+            value=value,
+            ttl=ttl,
+            raw=raw,
+        )
+
+    def _parse_repl_delete(self, parts: list, raw: str) -> Command:
+        """
+        Parse a REPL_DELETE command (internal replication).
+
+        Format: REPL_DELETE <key>
+        """
+        if len(parts) != 2:
+            return Command(type=CommandType.UNKNOWN, raw=raw)
+
+        key = parts[1]
+        if len(key) > self.max_key_length:
+            return Command(type=CommandType.UNKNOWN, raw=raw)
+
+        return Command(type=CommandType.REPL_DELETE, key=key, raw=raw)
 
     def format_response(self, response: Response) -> str:
         """

@@ -21,10 +21,12 @@ Environment Variables:
 import argparse
 import asyncio
 import logging
+import os
 import signal
 import sys
 
 from .cache.store import KVStore
+from .cluster.config import ClusterConfig
 from .config.settings import settings
 from .network.tcp_server import KVServer
 
@@ -82,6 +84,24 @@ def setup_logging(debug: bool = False) -> None:
 def main() -> None:
     """Main entry point for the server."""
     args = parse_args()
+    
+    # Read cluster configuration from environment
+    node_id = int(os.getenv('NODE_ID', '0'))  # 0 = non-clustered mode
+    env_port = os.getenv('PORT')
+    
+    # Override port from environment if set
+    if env_port:
+        args.port = int(env_port)
+    
+    # Initialize cluster config if NODE_ID is set
+    cluster_config = None
+    if node_id > 0:
+        cluster_config = ClusterConfig(node_id)
+        print(f'Node {node_id} starting on port {args.port}')
+        print(f'  Primary for shards: {cluster_config.primary_shards}')
+        print(f'  Replica for shards: {cluster_config.replica_shards}')
+    else:
+        print(f'Starting in standalone mode on port {args.port}')
 
     # Setup logging
     setup_logging(debug=args.debug)
@@ -90,8 +110,13 @@ def main() -> None:
     # Create store with specified max size
     store = KVStore(max_size=args.max_keys)
 
-    # Create server
-    server = KVServer(host=args.host, port=args.port, store=store)
+    # Create server with cluster config
+    server = KVServer(
+        host=args.host, 
+        port=args.port, 
+        store=store,
+        cluster_config=cluster_config
+    )
 
     # Get or create event loop
     try:
