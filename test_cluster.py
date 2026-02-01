@@ -83,7 +83,7 @@ def test_cluster():
     except Exception as e:
         print(f"  ✗ Test failed: {e}")
     
-    # Test 5: Basic operations on each node
+    # Test 05: Basic operations on each node
     print("\n[Test 5] Basic operations on each node")
     for node_id, port in [(1, 5001), (2, 5002), (3, 5003)]:
         try:
