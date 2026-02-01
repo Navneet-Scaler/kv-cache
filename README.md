@@ -586,9 +586,3 @@ sudo docker logs kv-cache
 # Check if server is listening
 netstat -tlnp | grep 7171
 ```
-
-### Getting Help
-
-1. **Read the assignment**: `Assignment.md` has detailed requirements.
-2. **Review test cases**: Tests show expected behavior
-3. Ping your instructor with specific questions

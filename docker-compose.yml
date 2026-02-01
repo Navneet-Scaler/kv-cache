@@ -1,0 +1,70 @@
+services:
+  node1:
+    build: .
+    container_name: kv-cache-node1
+    environment:
+      - NODE_ID=1
+      - PORT=5001
+      - DOCKER_ENV=true
+      - KV_CACHE_HOST=0.0.0.0
+      - KV_CACHE_PORT=5001
+      - KV_CACHE_MAX_KEYS=10000
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "5001:5001"
+    networks:
+      - kv-cache-cluster
+    healthcheck:
+      test: ["CMD", "sh", "-c", "echo 'EXISTS healthcheck' | nc -w 2 localhost 5001 | grep -q 'OK' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  node2:
+    build: .
+    container_name: kv-cache-node2
+    environment:
+      - NODE_ID=2
+      - PORT=5002
+      - DOCKER_ENV=true
+      - KV_CACHE_HOST=0.0.0.0
+      - KV_CACHE_PORT=5002
+      - KV_CACHE_MAX_KEYS=10000
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "5002:5002"
+    networks:
+      - kv-cache-cluster
+    healthcheck:
+      test: ["CMD", "sh", "-c", "echo 'EXISTS healthcheck' | nc -w 2 localhost 5002 | grep -q 'OK' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  node3:
+    build: .
+    container_name: kv-cache-node3
+    environment:
+      - NODE_ID=3
+      - PORT=5003
+      - DOCKER_ENV=true
+      - KV_CACHE_HOST=0.0.0.0
+      - KV_CACHE_PORT=5003
+      - KV_CACHE_MAX_KEYS=10000
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "5003:5003"
+    networks:
+      - kv-cache-cluster
+    healthcheck:
+      test: ["CMD", "sh", "-c", "echo 'EXISTS healthcheck' | nc -w 2 localhost 5003 | grep -q 'OK' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  kv-cache-cluster:
+    driver: bridge
